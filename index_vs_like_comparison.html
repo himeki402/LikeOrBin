@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Index vs LIKE Comparison</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .method {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 3px solid #e9ecef;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .method:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        
+        .like-method {
+            border-color: #e74c3c;
+        }
+        
+        .index-method {
+            border-color: #27ae60;
+        }
+        
+        .method h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 1.8em;
+        }
+        
+        .table-simulation {
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .table-row {
+            display: flex;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            transition: background 0.3s ease;
+        }
+        
+        .table-row:last-child {
+            border-bottom: none;
+        }
+        
+        .table-row.header {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .table-row.scanning {
+            background: #ffe6e6;
+            animation: scan 1s ease-in-out;
+        }
+        
+        .table-row.found {
+            background: #e8f5e8;
+            font-weight: bold;
+        }
+        
+        .table-cell {
+            flex: 1;
+            padding: 5px 10px;
+        }
+        
+        .index-structure {
+            background: #fff;
+            border: 2px solid #27ae60;
+            border-radius: 8px;
+            margin: 15px 0;
+            padding: 15px;
+        }
+        
+        .btree-node {
+            background: #e8f5e8;
+            border: 2px solid #27ae60;
+            border-radius: 6px;
+            padding: 8px;
+            margin: 5px;
+            display: inline-block;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btree-node:hover {
+            background: #d4edda;
+            transform: scale(1.05);
+        }
+        
+        .btree-node.visited {
+            background: #ffeaa7;
+            border-color: #fdcb6e;
+        }
+        
+        .btree-level {
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .performance-stats {
+            background: #f1f3f4;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .stat-box {
+            display: inline-block;
+            background: white;
+            padding: 15px 25px;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .demo-button {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        .algorithm-explanation {
+            background: #fff;
+            border-left: 5px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .complexity-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .complexity-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            text-align: center;
+        }
+        
+        .like-complexity {
+            border-color: #e74c3c;
+        }
+        
+        .index-complexity {
+            border-color: #27ae60;
+        }
+        
+        .big-o {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        
+        .like-complexity .big-o {
+            color: #e74c3c;
+        }
+        
+        .index-complexity .big-o {
+            color: #27ae60;
+        }
+        
+        @keyframes scan {
+            0% { background: #fff; }
+            50% { background: #ffe6e6; }
+            100% { background: #fff; }
+        }
+        
+        .gin-index-demo {
+            background: #f8f9fa;
+            border: 2px solid #17a2b8;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .token-map {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .token-entry {
+            background: white;
+            border: 2px solid #17a2b8;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .token {
+            font-weight: bold;
+            color: #17a2b8;
+            font-size: 1.1em;
+        }
+        
+        .doc-list {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Index vs LIKE: Tại sao Index nhanh hơn?</h1>
+        
+        <div class="comparison">
+            <div class="method like-method">
+                <h2>🐌 LIKE Pattern Matching</h2>
+                <p><strong>Cách hoạt động:</strong> Quét từng dòng một cách tuần tự (Sequential Scan)</p>
+                
+                <div class="table-simulation" id="likeTable">
+                    <div class="table-row header">
+                        <div class="table-cell">ID</div>
+                        <div class="table-cell">Nội dung</div>
+                        <div class="table-cell">Trạng thái</div>
+                    </div>
+                    <div class="table-row" data-content="học postgresql">
+                        <div class="table-cell">1</div>
+                        <div class="table-cell">Học PostgreSQL cơ bản</div>
+                        <div class="table-cell">Chờ quét</div>
+                    </div>
+                    <div class="table-row" data-content="python tutorial">
+                        <div class="table-cell">2</div>
+                        <div class="table-cell">Python tutorial</div>
+                        <div class="table-cell">Chờ quét</div>
+                    </div>
+                    <div class="table-row" data-content="database design">
+                        <div class="table-cell">3</div>
+                        <div class="table-cell">Database design patterns</div>
+                        <div class="table-cell">Chờ quét</div>
+                    </div>
+                    <div class="table-row" data-content="sql optimization">
+                        <div class="table-cell">4</div>
+                        <div class="table-cell">SQL optimization tips</div>
+                        <div class="table-cell">Chờ quét</div>
+                    </div>
+                    <div class="table-row" data-content="fulltext search">
+                        <div class="table-cell">5</div>
+                        <div class="table-cell">Fulltext search guide</div>
+                        <div class="table-cell">Chờ quét</div>
+                    </div>
+                </div>
+                
+                <button class="demo-button" onclick="demonstrateLike()">
+                    Demo tìm kiếm "search"
+                </button>
+            </div>
+            
+            <div class="method index-method">
+                <h2>🚀 B-tree Index</h2>
+                <p><strong>Cách hoạt động:</strong> Tìm kiếm nhị phân trên cấu trúc cây đã sắp xếp</p>
+                
+                <div class="index-structure" id="btreeIndex">
+                    <div class="btree-level">
+                        <div class="btree-node" data-range="A-M" onclick="traverseBTree(this)">
+                            Root: A-M | N-Z
+                        </div>
+                    </div>
+                    <div class="btree-level">
+                        <div class="btree-node" data-range="A-F" onclick="traverseBTree(this)">A-F</div>
+                        <div class="btree-node" data-range="G-M" onclick="traverseBTree(this)">G-M</div>
+                        <div class="btree-node" data-range="N-S" onclick="traverseBTree(this)">N-S</div>
+                        <div class="btree-node" data-range="T-Z" onclick="traverseBTree(this)">T-Z</div>
+                    </div>
+                    <div class="btree-level">
+                        <div class="btree-node">Database</div>
+                        <div class="btree-node">Fulltext</div>
+                        <div class="btree-node">Learn</div>
+                        <div class="btree-node">Optimization</div>
+                        <div class="btree-node">Python</div>
+                        <div class="btree-node">Search</div>
+                        <div class="btree-node">SQL</div>
+                        <div class="btree-node">Tutorial</div>
+                    </div>
+                </div>
+                
+                <button class="demo-button" onclick="demonstrateBTree()">
+                    Demo tìm "Search" trong B-tree
+                </button>
+            </div>
+        </div>
+        
+        <div class="complexity-comparison">
+            <div class="complexity-card like-complexity">
+                <h3>LIKE Pattern Matching</h3>
+                <div class="big-o">O(n)</div>
+                <p>Phải kiểm tra từng dòng<br>Thời gian tăng tuyến tính theo số dòng</p>
+            </div>
+            <div class="complexity-card index-complexity">
+                <h3>B-tree Index</h3>
+                <div class="big-o">O(log n)</div>
+                <p>Tìm kiếm nhị phân<br>Thời gian tăng logarit theo số dòng</p>
+            </div>
+        </div>
+        
+        <div class="performance-stats">
+            <h3>📊 So sánh hiệu suất với 1 triệu bản ghi</h3>
+            <div class="stat-box">
+                <div class="stat-number" style="color: #e74c3c;">1,000,000</div>
+                <div class="stat-label">Lần so sánh với LIKE</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" style="color: #27ae60;">~20</div>
+                <div class="stat-label">Lần so sánh với B-tree Index</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" style="color: #f39c12;">50,000x</div>
+                <div class="stat-label">Nhanh hơn</div>
+            </div>
+        </div>
+        
+        <div class="gin-index-demo">
+            <h3>🔍 GIN Index cho Full-text Search</h3>
+            <p>GIN (Generalized Inverted Index) tạo bản đồ từ token → danh sách document IDs</p>
+            
+            <div class="token-map">
+                <div class="token-entry">
+                    <div class="token">'search'</div>
+                    <div class="doc-list">→ Doc IDs: 5, 12, 23, 45</div>
+                </div>
+                <div class="token-entry">
+                    <div class="token">'postgresql'</div>
+                    <div class="doc-list">→ Doc IDs: 1, 8, 15, 32</div>
+                </div>
+                <div class="token-entry">
+                    <div class="token">'database'</div>
+                    <div class="doc-list">→ Doc IDs: 3, 7, 19, 28</div>
+                </div>
+                <div class="token-entry">
+                    <div class="token">'optimization'</div>
+                    <div class="doc-list">→ Doc IDs: 4, 11, 29, 41</div>
+                </div>
+            </div>
+            
+            <div class="algorithm-explanation">
+                <h4>🎯 Tại sao GIN Index cực kỳ nhanh cho Full-text?</h4>
+                <ul>
+                    <li><strong>Tìm kiếm trực tiếp:</strong> Thay vì quét toàn bộ text, chỉ cần lookup token trong hash table</li>
+                    <li><strong>Kết hợp nhanh:</strong> Với query "search & database", chỉ cần lấy giao của 2 danh sách ID</li>
+                    <li><strong>Compact storage:</strong> Mỗi token chỉ lưu 1 lần, kèm danh sách vị trí</li>
+                    <li><strong>Boolean operations:</strong> Hỗ trợ AND, OR, NOT hiệu quả thông qua set operations</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="algorithm-explanation">
+            <h3>🧠 Giải thích chi tiết</h3>
+            <h4>1. LIKE Pattern Matching (O(n)):</h4>
+            <ul>
+                <li>Phải đọc và kiểm tra từng dòng một cách tuần tự</li>
+                <li>Với mỗi dòng, phải so sánh pattern với toàn bộ nội dung</li>
+                <li>Không thể "bỏ qua" bất kỳ dòng nào - phải kiểm tra hết</li>
+                <li>Thời gian tăng tuyến tính: 2x dữ liệu = 2x thời gian</li>
+            </ul>
+            
+            <h4>2. B-tree Index (O(log n)):</h4>
+            <ul>
+                <li>Dữ liệu được tổ chức thành cây nhị phân đã sắp xếp</li>
+                <li>Mỗi bước loại bỏ được 50% khả năng tìm kiếm</li>
+                <li>Chỉ cần 20 bước để tìm trong 1 triệu bản ghi (2^20 ≈ 1 triệu)</li>
+                <li>Thời gian tăng logarit: 10x dữ liệu chỉ cần thêm ~3 bước</li>
+            </ul>
+            
+            <h4>3. GIN Index cho Full-text:</h4>
+            <ul>
+                <li>Tạo "từ điển" của tất cả các từ (tokens) trong database</li>
+                <li>Mỗi từ mapping đến danh sách documents chứa từ đó</li>
+                <li>Tìm kiếm = lookup trong hash table + set operations</li>
+                <li>Cực kỳ nhanh cho boolean queries phức tạp</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        let likeStep = 0;
+        let searchTerm = "search";
+        
+        function demonstrateLike() {
+            const rows = document.querySelectorAll('#likeTable .table-row:not(.header)');
+            likeStep = 0;
+            
+            // Reset
+            rows.forEach(row => {
+                row.classList.remove('scanning', 'found');
+                row.children[2].textContent = 'Chờ quét';
+            });
+            
+            function scanNext() {
+                if (likeStep < rows.length) {
+                    const currentRow = rows[likeStep];
+                    currentRow.classList.add('scanning');
+                    currentRow.children[2].textContent = 'Đang quét...';
+                    
+                    setTimeout(() => {
+                        currentRow.classList.remove('scanning');
+                        const content = currentRow.dataset.content.toLowerCase();
+                        
+                        if (content.includes(searchTerm)) {
+                            currentRow.classList.add('found');
+                            currentRow.children[2].textContent = '✅ Tìm thấy!';
+                        } else {
+                            currentRow.children[2].textContent = '❌ Không khớp';
+                        }
+                        
+                        likeStep++;
+                        setTimeout(scanNext, 800);
+                    }, 1000);
+                }
+            }
+            
+            scanNext();
+        }
+        
+        function demonstrateBTree() {
+            const nodes = document.querySelectorAll('.btree-node');
+            nodes.forEach(node => node.classList.remove('visited'));
+            
+            // Simulate searching for "Search"
+            setTimeout(() => {
+                // Root level - go to N-Z
+                nodes[0].classList.add('visited');
+                setTimeout(() => {
+                    nodes[3].classList.add('visited'); // N-S
+                    setTimeout(() => {
+                        nodes[9].classList.add('visited'); // Search
+                        alert('Tìm thấy "Search" chỉ với 3 bước!');
+                    }, 1000);
+                }, 1000);
+            }, 500);
+        }
+        
+        function traverseBTree(node) {
+            node.classList.add('visited');
+        }
+    </script>
+</body>
+</html>
